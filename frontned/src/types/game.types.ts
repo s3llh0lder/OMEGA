@@ -7,7 +7,8 @@ export interface Game {
 
 export interface BetResult {
   won: boolean;
-  amount: number;
+  amount: number; // Bet amount
+  payout: number; // Actual payout from backend
   newBalance: number;
 }
 

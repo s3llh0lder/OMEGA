@@ -12,12 +12,16 @@ export function calculateBetResult(betAmount: number, currentBalance: number): B
     return {
       won: false,
       amount: betAmount,
+      payout: 0,
       newBalance: currentBalance,
     };
   }
 
   // 50/50 random win/lose
   const won = Math.random() >= 0.5;
+
+  // Calculate payout (win = bet x 2)
+  const payout = won ? betAmount * 2 : 0;
 
   // Calculate new balance
   const newBalance = won
@@ -27,6 +31,7 @@ export function calculateBetResult(betAmount: number, currentBalance: number): B
   return {
     won,
     amount: betAmount,
+    payout,
     newBalance,
   };
 }

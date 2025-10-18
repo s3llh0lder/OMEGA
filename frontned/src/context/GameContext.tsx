@@ -1,12 +1,13 @@
-import React, { createContext, useReducer, useEffect, ReactNode } from 'react';
+import React, { createContext, useReducer, useEffect, useCallback, ReactNode } from 'react';
 import { GameState, Game, BetResult } from '@/types/game.types';
 import { mockGames } from '@/data/mockGames';
-import { calculateBetResult } from '@/utils/gameLogic';
 import { loadFromStorage, saveToStorage } from '@/utils/storage';
 import { STORAGE_KEYS, INITIAL_BALANCE, GAMES_PER_PAGE } from '@/utils/constants';
+import { getAllGames, placeBet as placeBetAPI, getPlayer, APIError } from '@/services/api';
 
 type GameAction =
   | { type: 'LOAD_GAMES' }
+  | { type: 'SET_GAMES'; payload: Game[] }
   | { type: 'SET_CURRENT_GAME'; payload: string }
   | { type: 'PLACE_BET'; payload: BetResult }
   | { type: 'SET_SEARCH_QUERY'; payload: string }
@@ -15,7 +16,7 @@ type GameAction =
 
 interface GameContextValue {
   state: GameState;
-  placeBet: (amount: number) => BetResult;
+  placeBet: (amount: number) => Promise<BetResult>;
   setCurrentGame: (gameId: string) => void;
   setSearchQuery: (query: string) => void;
   loadMoreGames: () => void;
@@ -30,6 +31,11 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       return {
         ...state,
         games: mockGames,
+      };
+    case 'SET_GAMES':
+      return {
+        ...state,
+        games: action.payload,
       };
     case 'SET_CURRENT_GAME':
       return {
@@ -63,9 +69,11 @@ function gameReducer(state: GameState, action: GameAction): GameState {
 }
 
 export function GameProvider({ children }: { children: ReactNode }) {
+  // Initialize balance from localStorage to prevent flash of default value
+  const storedBalance = loadFromStorage<number>(STORAGE_KEYS.BALANCE);
   const initialState: GameState = {
     games: [],
-    balance: INITIAL_BALANCE,
+    balance: storedBalance ?? INITIAL_BALANCE,
     currentGame: null,
     visibleGamesCount: GAMES_PER_PAGE,
     searchQuery: '',
@@ -73,15 +81,72 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
   const [state, dispatch] = useReducer(gameReducer, initialState);
 
-  // Load games on mount
+  // Load games from backend on mount
   useEffect(() => {
-    dispatch({ type: 'LOAD_GAMES' });
+    const loadGames = async () => {
+      try {
+        const backendGames = await getAllGames();
 
-    // Restore balance from storage
-    const storedBalance = loadFromStorage<number>(STORAGE_KEYS.BALANCE);
-    if (storedBalance !== null) {
-      dispatch({ type: 'RESTORE_BALANCE', payload: storedBalance });
-    }
+        // Map backend games (with number IDs) to frontend Game format (with string IDs)
+        const games: Game[] = backendGames.map(game => ({
+          id: String(game.id),
+          name: game.name,
+          imageUrl: mockGames.find(mg => mg.name === game.name)?.imageUrl ||
+                    'https://images.unsplash.com/photo-1511512578047-dfb367046420?w=400&h=400&fit=crop',
+          description: game.description,
+        }));
+
+        dispatch({ type: 'SET_GAMES', payload: games });
+      } catch (error) {
+        console.error('Failed to load games from backend, using mock data:', error);
+
+        // Display user-friendly error message
+        if (error instanceof APIError) {
+          alert(`Unable to load games: ${error.message}. Using offline mode.`);
+        } else {
+          alert('Unable to connect to game server. Using offline mode.');
+        }
+
+        // Fallback to mock games
+        dispatch({ type: 'LOAD_GAMES' });
+      }
+    };
+
+    loadGames();
+  }, []);
+
+  // Load player balance from backend on mount
+  useEffect(() => {
+    const loadBalance = async () => {
+      const playerId = loadFromStorage<number>(STORAGE_KEYS.PLAYER_ID);
+
+      if (!playerId) {
+        return; // No player ID, keep localStorage balance
+      }
+
+      try {
+        const player = await getPlayer(playerId);
+
+        // Update balance from backend (source of truth)
+        dispatch({ type: 'RESTORE_BALANCE', payload: player.balance });
+
+        // Sync localStorage with backend balance
+        saveToStorage(STORAGE_KEYS.BALANCE, player.balance);
+      } catch (error) {
+        console.error('Failed to load balance from backend:', error);
+
+        // Display user-friendly error message
+        if (error instanceof APIError) {
+          alert(`Unable to sync balance: ${error.message}. Using local balance.`);
+        } else {
+          alert('Unable to sync balance with server. Using local balance.');
+        }
+
+        // Keep the localStorage balance as fallback
+      }
+    };
+
+    loadBalance();
   }, []);
 
   // Save balance to localStorage whenever it changes
@@ -89,25 +154,71 @@ export function GameProvider({ children }: { children: ReactNode }) {
     saveToStorage(STORAGE_KEYS.BALANCE, state.balance);
   }, [state.balance]);
 
-  const placeBet = (amount: number): BetResult => {
-    const result = calculateBetResult(amount, state.balance);
-    dispatch({ type: 'PLACE_BET', payload: result });
-    return result;
-  };
+  const placeBet = useCallback(async (amount: number): Promise<BetResult> => {
+    const playerId = loadFromStorage<number>(STORAGE_KEYS.PLAYER_ID);
 
-  const setCurrentGame = (gameId: string): void => {
+    // Fallback to local calculation if no player ID or no current game
+    if (!playerId || !state.currentGame) {
+      const won = Math.random() >= 0.5;
+      const payout = won ? amount * 2 : 0;
+      const localResult: BetResult = {
+        won,
+        amount,
+        payout,
+        newBalance: state.balance - amount + payout,
+      };
+      dispatch({ type: 'PLACE_BET', payload: localResult });
+      return localResult;
+    }
+
+    try {
+      // Call backend API to place bet
+      const gameId = Number(state.currentGame.id);
+      const betResponse = await placeBetAPI({
+        playerId,
+        gameId,
+        betValue: amount,
+      });
+
+      // Map backend response to frontend BetResult format
+      const result: BetResult = {
+        won: betResponse.result === 'WIN',
+        amount: betResponse.betValue,
+        payout: betResponse.payout,
+        newBalance: betResponse.newBalance,
+      };
+
+      // Update local state with new balance
+      dispatch({ type: 'PLACE_BET', payload: result });
+
+      return result;
+    } catch (error) {
+      console.error('Failed to place bet via backend:', error);
+
+      // Display user-friendly error message
+      if (error instanceof APIError) {
+        alert(`Unable to place bet: ${error.message}`);
+        throw error; // Re-throw to prevent bet from being placed
+      } else {
+        alert('An unexpected error occurred while placing your bet. Please try again.');
+        throw error;
+      }
+    }
+  }, [state.currentGame, state.balance]);
+
+  const setCurrentGame = useCallback((gameId: string): void => {
     dispatch({ type: 'SET_CURRENT_GAME', payload: gameId });
-  };
+  }, []);
 
-  const setSearchQuery = (query: string): void => {
+  const setSearchQuery = useCallback((query: string): void => {
     dispatch({ type: 'SET_SEARCH_QUERY', payload: query });
-  };
+  }, []);
 
-  const loadMoreGames = (): void => {
+  const loadMoreGames = useCallback((): void => {
     dispatch({ type: 'LOAD_MORE_GAMES' });
-  };
+  }, []);
 
-  const getFilteredGames = (): Game[] => {
+  const getFilteredGames = useCallback((): Game[] => {
     if (!state.searchQuery.trim()) {
       return state.games;
     }
@@ -116,7 +227,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
     return state.games.filter(game =>
       game.name.toLowerCase().includes(query)
     );
-  };
+  }, [state.searchQuery, state.games]);
 
   const value: GameContextValue = {
     state,

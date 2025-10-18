@@ -4,6 +4,7 @@ import { User, SignupData } from '@/types/user.types';
 import { loadFromStorage, saveToStorage, clearStorage } from '@/utils/storage';
 import { STORAGE_KEYS, INITIAL_BALANCE } from '@/utils/constants';
 import { validatePassword, validateAge, isPasswordValid } from '@/utils/validation';
+import { registerPlayer, depositMoney, APIError } from '@/services/api';
 
 type AuthAction =
   | { type: 'LOGIN'; payload: User }
@@ -70,20 +71,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [state.isAuthenticated, state.user]);
 
   const login = async (credentials: LoginCredentials): Promise<void> => {
-    // Load user from storage
-    const storedUser = loadFromStorage<User>(STORAGE_KEYS.USER);
+    try {
+      // Load user from storage
+      const storedUser = loadFromStorage<User>(STORAGE_KEYS.USER);
 
-    if (!storedUser) {
-      throw new Error('User not found. Please sign up first.');
+      if (!storedUser) {
+        const errorMessage = 'User not found. Please sign up first.';
+        alert(errorMessage);
+        throw new Error(errorMessage);
+      }
+
+      // Validate credentials
+      if (storedUser.username !== credentials.username || storedUser.password !== credentials.password) {
+        const errorMessage = 'Invalid username or password';
+        alert(errorMessage);
+        throw new Error(errorMessage);
+      }
+
+      // Login successful
+      dispatch({ type: 'LOGIN', payload: storedUser });
+    } catch (error) {
+      // If error was already handled above, just re-throw
+      if (error instanceof Error && (error.message === 'User not found. Please sign up first.' || error.message === 'Invalid username or password')) {
+        throw error;
+      }
+
+      // Handle unexpected errors
+      alert('An unexpected error occurred during login. Please try again.');
+      throw error;
     }
-
-    // Validate credentials
-    if (storedUser.username !== credentials.username || storedUser.password !== credentials.password) {
-      throw new Error('Invalid username or password');
-    }
-
-    // Login successful
-    dispatch({ type: 'LOGIN', payload: storedUser });
   };
 
   const signup = async (data: SignupData): Promise<void> => {
@@ -109,22 +125,51 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       throw new Error('You must be at least 18 years old');
     }
 
-    // Create new user
-    const newUser: User = {
-      username: data.username,
-      password: data.password, // In production, this would be hashed
-      birthdate: data.birthdate,
-      createdAt: new Date().toISOString(),
-    };
+    try {
+      // Register player with backend API
+      const playerResponse = await registerPlayer({
+        name: data.username, // Using username as name
+        username: data.username,
+        birthdate: data.birthdate,
+      });
 
-    // Save user to storage
-    saveToStorage(STORAGE_KEYS.USER, newUser);
+      // Deposit initial balance
+      await depositMoney({
+        playerId: playerResponse.id,
+        amount: INITIAL_BALANCE,
+      });
 
-    // Initialize balance
-    saveToStorage(STORAGE_KEYS.BALANCE, INITIAL_BALANCE);
+      // Store player ID for future API calls
+      saveToStorage(STORAGE_KEYS.PLAYER_ID, playerResponse.id);
 
-    // Login the new user
-    dispatch({ type: 'LOGIN', payload: newUser });
+      // Create new user object for local storage
+      const newUser: User = {
+        username: data.username,
+        password: data.password, // In production, this would be hashed
+        birthdate: data.birthdate,
+        createdAt: new Date().toISOString(),
+      };
+
+      // Save user to storage
+      saveToStorage(STORAGE_KEYS.USER, newUser);
+
+      // Initialize balance in localStorage
+      saveToStorage(STORAGE_KEYS.BALANCE, INITIAL_BALANCE);
+
+      // Login the new user
+      dispatch({ type: 'LOGIN', payload: newUser });
+    } catch (error) {
+      console.error('Backend API error during signup:', error);
+
+      // Display user-friendly error message
+      if (error instanceof APIError) {
+        alert(error.message);
+        throw error; // Re-throw to prevent signup from continuing
+      } else {
+        alert('An unexpected error occurred during signup. Please try again.');
+        throw error;
+      }
+    }
   };
 
   const logout = (): void => {

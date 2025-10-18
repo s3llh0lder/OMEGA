@@ -13,10 +13,10 @@ interface GameContainerProps {
 export function GameContainer({ game }: GameContainerProps) {
   const { state, placeBet } = useGames();
   const navigate = useNavigate();
-  const [result, setResult] = useState<{ won: boolean; amount: number } | null>(null);
+  const [result, setResult] = useState<{ won: boolean; amount: number; payout: number } | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
 
-  const handleBet = (amount: number) => {
+  const handleBet = async (amount: number) => {
     if (amount > state.balance) {
       alert('Insufficient balance for this bet');
       return;
@@ -26,9 +26,9 @@ export function GameContainer({ game }: GameContainerProps) {
     setResult(null);
 
     // Simulate game animation delay
-    setTimeout(() => {
-      const betResult = placeBet(amount);
-      setResult({ won: betResult.won, amount: betResult.amount });
+    setTimeout(async () => {
+      const betResult = await placeBet(amount);
+      setResult({ won: betResult.won, amount: betResult.amount, payout: betResult.payout });
       setIsPlaying(false);
     }, 500);
   };
@@ -54,7 +54,7 @@ export function GameContainer({ game }: GameContainerProps) {
               {result.won ? (
                 <>
                   <span className="result-icon">🎉</span>
-                  <span>You won ${result.amount.toFixed(2)}!</span>
+                  <span>You won ${result.payout.toFixed(2)}!</span>
                 </>
               ) : (
                 <>

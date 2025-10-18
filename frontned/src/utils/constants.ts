@@ -15,5 +15,6 @@ export const STORAGE_KEYS = {
   AUTH: 'mini-casino-auth',
   BALANCE: 'mini-casino-balance',
   USER: 'mini-casino-user',
-  LAST_PAGE: 'mini-casino-last-page'
+  LAST_PAGE: 'mini-casino-last-page',
+  PLAYER_ID: 'mini-casino-player-id'
 } as const;
