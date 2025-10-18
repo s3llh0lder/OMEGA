@@ -1,0 +1,204 @@
+.game-container {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 40px 24px;
+}
+
+.game-play-area {
+  background: white;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 40px;
+}
+
+.game-image-container {
+  width: 100%;
+  padding-top: 100%;
+  position: relative;
+  background: #f0fdf4;
+}
+
+.game-image {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.game-info {
+  padding: 40px 40px 40px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.game-name {
+  margin: 0;
+  font-size: 32px;
+  color: #1f2937;
+}
+
+.game-desc {
+  margin: 0;
+  color: #6b7280;
+  font-size: 16px;
+}
+
+.balance-display {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 20px;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  border-radius: 12px;
+  color: white;
+}
+
+.balance-label {
+  font-size: 14px;
+  opacity: 0.9;
+}
+
+.balance-amount {
+  font-size: 32px;
+  font-weight: bold;
+}
+
+.result-message {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 20px;
+  border-radius: 12px;
+  font-size: 18px;
+  font-weight: 600;
+  animation: slideIn 0.3s ease;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.result-win {
+  background: #d1fae5;
+  color: #064e3b;
+  border: 2px solid #10b981;
+}
+
+.result-lose {
+  background: #fed7d7;
+  color: #742a2a;
+  border: 2px solid #fc8181;
+}
+
+.result-icon {
+  font-size: 24px;
+}
+
+.bet-section h3 {
+  margin: 0 0 16px;
+  font-size: 20px;
+  color: #1f2937;
+}
+
+.bet-buttons {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.bet-button {
+  padding: 16px;
+  font-size: 20px;
+  font-weight: bold;
+  border: 3px solid #10b981;
+  background: white;
+  color: #10b981;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: inherit;
+}
+
+.bet-button:hover:not(:disabled) {
+  background: #10b981;
+  color: white;
+  transform: scale(1.05);
+}
+
+.bet-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  border-color: #a7f3d0;
+  color: #a7f3d0;
+}
+
+.playing-message {
+  text-align: center;
+  color: #10b981;
+  font-weight: 600;
+  margin: 12px 0 0;
+  animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.game-actions {
+  margin-top: auto;
+}
+
+@media (max-width: 768px) {
+  .game-container {
+    padding: 24px 16px;
+  }
+
+  .game-play-area {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+
+  .game-info {
+    padding: 24px;
+    gap: 20px;
+  }
+
+  .game-name {
+    font-size: 24px;
+  }
+
+  .balance-amount {
+    font-size: 24px;
+  }
+
+  .result-message {
+    font-size: 16px;
+  }
+
+  .bet-buttons {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .bet-button {
+    padding: 14px;
+    font-size: 18px;
+  }
+}

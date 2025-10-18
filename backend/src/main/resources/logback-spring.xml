@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+
+    <springProperty scope="context" name="springAppName" source="spring.application.name" defaultValue="casino"/>
+    <property name="LOG_LEVEL_PATTERN" value="%5p"/>
+
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+            <pattern>
+                %clr(%d{yyyy-MM-dd HH:mm:ss.SSS}){faint} %clr(${LOG_LEVEL_PATTERN}) %clr([%15.15t]){faint} %clr(%-40.40logger{39}){cyan} %clr(:){faint} %m%n${LOG_EXCEPTION_CONVERSION_WORD:-%wEx}
+            </pattern>
+        </encoder>
+    </appender>
+
+    <!-- Default configuration (works without any profile) -->
+    <root level="INFO">
+        <appender-ref ref="CONSOLE"/>
+    </root>
+
+    <!-- Enable DEBUG level for all com.omega packages -->
+    <logger name="com.omega" level="DEBUG"/>
+
+    <!-- Reduce noise from WebSocket and Tomcat -->
+    <logger name="org.springframework.web.socket" level="WARN"/>
+    <logger name="org.apache.tomcat.websocket" level="WARN"/>
+
+    <!-- Profile-specific overrides (if needed) -->
+    <springProfile name="production">
+        <logger name="com.omega" level="WARN"/>
+    </springProfile>
+
+</configuration>
