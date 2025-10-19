@@ -71,35 +71,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [state.isAuthenticated, state.user]);
 
   const login = async (credentials: LoginCredentials): Promise<void> => {
-    try {
-      // Load user from storage
-      const storedUser = loadFromStorage<User>(STORAGE_KEYS.USER);
+    // Load user from storage
+    const storedUser = loadFromStorage<User>(STORAGE_KEYS.USER);
 
-      if (!storedUser) {
-        const errorMessage = 'User not found. Please sign up first.';
-        alert(errorMessage);
-        throw new Error(errorMessage);
-      }
-
-      // Validate credentials
-      if (storedUser.username !== credentials.username || storedUser.password !== credentials.password) {
-        const errorMessage = 'Invalid username or password';
-        alert(errorMessage);
-        throw new Error(errorMessage);
-      }
-
-      // Login successful
-      dispatch({ type: 'LOGIN', payload: storedUser });
-    } catch (error) {
-      // If error was already handled above, just re-throw
-      if (error instanceof Error && (error.message === 'User not found. Please sign up first.' || error.message === 'Invalid username or password')) {
-        throw error;
-      }
-
-      // Handle unexpected errors
-      alert('An unexpected error occurred during login. Please try again.');
-      throw error;
+    if (!storedUser) {
+      throw new Error('User not found. Please sign up first.');
     }
+
+    // Validate credentials
+    if (storedUser.username !== credentials.username || storedUser.password !== credentials.password) {
+      throw new Error('Invalid username or password');
+    }
+
+    // Login successful
+    dispatch({ type: 'LOGIN', payload: storedUser });
   };
 
   const signup = async (data: SignupData): Promise<void> => {
@@ -160,15 +145,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       dispatch({ type: 'LOGIN', payload: newUser });
     } catch (error) {
       console.error('Backend API error during signup:', error);
-
-      // Display user-friendly error message
-      if (error instanceof APIError) {
-        alert(error.message);
-        throw error; // Re-throw to prevent signup from continuing
-      } else {
-        alert('An unexpected error occurred during signup. Please try again.');
-        throw error;
-      }
+      // Re-throw error for component to handle and display
+      throw error;
     }
   };
 

@@ -27,9 +27,16 @@ export function GameContainer({ game }: GameContainerProps) {
 
     // Simulate game animation delay
     setTimeout(async () => {
-      const betResult = await placeBet(amount);
-      setResult({ won: betResult.won, amount: betResult.amount, payout: betResult.payout });
-      setIsPlaying(false);
+      try {
+        const betResult = await placeBet(amount);
+        setResult({ won: betResult.won, amount: betResult.amount, payout: betResult.payout });
+      } catch (error) {
+        // Error is already displayed by GameContext (via alert)
+        // Just re-enable the buttons
+        console.error('Bet placement failed:', error);
+      } finally {
+        setIsPlaying(false);
+      }
     }, 500);
   };
 
