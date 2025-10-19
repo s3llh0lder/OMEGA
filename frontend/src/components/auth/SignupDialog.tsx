@@ -67,6 +67,7 @@ export function SignupDialog({ isOpen, onClose, onSwitchToLogin }: SignupDialogP
             <input
               id="username"
               type="text"
+              autoComplete="username"
               {...register('username', {
                 required: 'Username is required',
                 minLength: { value: 3, message: 'Username must be at least 3 characters' }
@@ -84,6 +85,7 @@ export function SignupDialog({ isOpen, onClose, onSwitchToLogin }: SignupDialogP
             <input
               id="password"
               type="password"
+              autoComplete="new-password"
               {...register('password', {
                 required: 'Password is required',
                 validate: (value) => {
@@ -120,6 +122,7 @@ export function SignupDialog({ isOpen, onClose, onSwitchToLogin }: SignupDialogP
             <input
               id="repeatPassword"
               type="password"
+              autoComplete="new-password"
               {...register('repeatPassword', {
                 required: 'Please repeat your password',
                 validate: (value) => value === password || 'Passwords do not match'

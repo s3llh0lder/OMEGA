@@ -63,6 +63,7 @@ export function LoginDialog({ isOpen, onClose, onSwitchToSignup }: LoginDialogPr
             <input
               id="username"
               type="text"
+              autoComplete="username"
               {...register('username', { required: 'Username is required' })}
               className="form-input"
               placeholder="Enter your username"
@@ -77,6 +78,7 @@ export function LoginDialog({ isOpen, onClose, onSwitchToSignup }: LoginDialogPr
             <input
               id="password"
               type="password"
+              autoComplete="current-password"
               {...register('password', { required: 'Password is required' })}
               className="form-input"
               placeholder="Enter your password"
